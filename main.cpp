@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <string>
+#include <string.h>
 #include <iostream>
 #include <list>
 #include <vector>
@@ -94,19 +94,28 @@ public:
 		for (auto &com : commands) {
 			vector<string> com_pat = split (com, " \t");
 
-			glob_t globbuf;
-			vector<const char*> C;			
+			glob_t globbuf;	
+					
+			for (globbuf.gl_offs = 0; globbuf.gl_offs < com_pat.size(); globbuf.gl_offs++){
+				if (com_pat[globbuf.gl_offs].find("*") != string::npos) {
+					break;				
+				}			
+			}	
+			glob("", GLOB_DOOFFS, NULL, &globbuf);
 			for (int i = 0; i < com_pat.size(); i++){
-				globbuf.gl_pathv[i] = (const char*) com_pat[i].c_str()
+				size_t found = com_pat[i].find("*"); 
+				if (found == string::npos) {
+					globbuf.gl_pathv[i] = strdup(com_pat[i].c_str());
+				} else {
+					glob(com_pat[i].c_str(), GLOB_DOOFFS | GLOB_APPEND, NULL, &globbuf);	
+				} 
 			}
-			C.push_back(NULL);
+			execvp(com_pat[0].c_str(), &globbuf.gl_pathv[0]);
 
-			size_t found = find (com_pat);
-
-			
-			globbuf.gl_offs =
-
-			execvp(C[0], (char* const*)&C[0]);
+			for (int i = 0; i < globbuf.gl_offs; i++){
+				free (globbuf.gl_pathv[i]);			
+			}
+			globfree(&globbuf);
 		}
 		return true;
 	}
